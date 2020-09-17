@@ -56,14 +56,14 @@ class LockedQueue<T> extends AbstractQueue<T> {
   // 4. Release the lock.
   @Override
   public boolean add(T x) {
-    lock.lock();
-    try {
+    lock.lock(); // 1
+    try { // 2
       while (size == items.length) notFull.await();
-      addUnchecked(x);
+      addUnchecked(x); // 3
     }
     catch(InterruptedException e) {}
     finally {
-      lock.unlock();
+      lock.unlock(); // 4
     }
     return true;
   }
@@ -75,14 +75,14 @@ class LockedQueue<T> extends AbstractQueue<T> {
   @Override
   public T remove() {
     T x = null;
-    lock.lock();
+    lock.lock(); // 1
     try {
-      while (size == 0) notEmpty.await();
-      x = removeUnchecked();
+      while (size == 0) notEmpty.await(); // 2
+      x = removeUnchecked(); // 3
     }
     catch(InterruptedException e) {}
     finally {
-      lock.unlock();
+      lock.unlock(); // 4
     }
     return x;
   }
