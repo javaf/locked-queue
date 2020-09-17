@@ -1,49 +1,54 @@
-Test-and-set Lock uses an atomic value for
-indicating that some thread has engaged the lock
-and is executing its critical section (CS).
+Locked Queue uses locks and conditions to block
+when queue is empty, or it is full. Just as
+locks are inherently vulnerable to deadlock,
+Condition objects are inherently vulnerable to
+lost wakeups in which one or more threads wait
+forever without realizing that the condition
+for which they are waiting has become true.
 
-Each thread that wants to enter CS tries
-to engage lock, and checks to see if it was
-the one who managed to engage it (with an
-atomic operation). This has no effect if
-it was already engaged. If it managed to
-engage it, it proceeds to its CS, otherwise
-it just retries.
+This queue signals "not empty" whenever an item
+is added to the queue, and "not full" whenever
+an item is removed from the queue. However,
+consider an optimization, where you only signal
+"not empty" if the queue was empty. Bang! Lost
+wakeup is suddenly possible.
 
-Once the thread is done with CS, it simply
-disengages the lock.
+To see how that is possible, consider 2
+consumers A & B and 2 producers C & D. When
+queue is empty and both A & B have to remove(),
+they are blocked until C or D can add(). If C
+add()s, followed by D, only 1 "not empty"
+condition would be active causing C to wakeup,
+but not D.
 
-As all thread repeatedly attempt to engage the
-lock for themselves, it leads a storm on the
-processor memory bus (since the atomic operation
-ignores the cache). Since bus traffic is always
-high, it makes it difficult for the lock holder
-to disengage his lock (due to traffic). Also
-this scheme does not provide first-come-first-
-served fairness. Hence, this type of lock is
-only suitable for educational purposes.
+Hence, one needs to be careful when working with
+both locks and condition objects.
+
+The functionality of this queue is similar to
+BlockingQueue and does not suffer from the lost
+wakeup problem.
 
 ```java
-1. When thread wants to access critical
-   section, it tries to engage lock, for
-   itself, with an atomic operation. This
-   has no effect if it was already engaged.
-   If it managed to engage it, it proceeds
-   to its CS.
-2. If not, it retries again.
+add():
+1. Acquire lock before any action.
+2. Wait for queue being not full.
+3. Add item to queue.
+4. Release the lock.
 ```
 
 ```java
-1. When a thread is done with its critical
-   section, it simply sets the "locked" state
-   to false.
+remove():
+1. Acquire lock before any action.
+2. Wait for queue being not empty.
+3. Remove item from queue.
+4. Release the lock.
 ```
 
-See [TASLock.java] for code, [Main.java] for test, and [repl.it] for output.
+See [LockedQueue.java] for code, [Main.java] for test, and [repl.it] for output.
 
-[TASLock.java]: https://repl.it/@wolfram77/tas-lock#TASLock.java
-[Main.java]: https://repl.it/@wolfram77/tas-lock#Main.java
-[repl.it]: https://tas-lock.wolfram77.repl.run
+[LockedQueue.java]: https://repl.it/@wolfram77/locked-queue#LockedQueue.java
+[Main.java]: https://repl.it/@wolfram77/locked-queue#Main.java
+[repl.it]: https://locked-queue.wolfram77.repl.run
 
 
 ### references

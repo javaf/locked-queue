@@ -1,79 +1,69 @@
+import java.util.*;
+
 class Main {
-  static TASLock lock;
-  static double[] sharedData;
-  static int SD = 100, CS = 100, TH = 10;
-  // SD: shared data srray size
-  // CS: critical section executed per thread
-  // TH: number of threads
+  static Queue<String> queue;
+  static int CAP = 2;
+  static int OPS = 4;
+  // CAP: capacity of queue
+  // OPS: number to add()s / remove()s
 
-  // Critical section updated shared data
-  // with a random value. If all values
-  // dont match then it was not executed
-  // atomically!
-  static void criticalSection() {
-    try {
-    double v = Math.random();
-    for(int i=0; i<SD; i++) {
-      if(i % (SD/4)==0) Thread.sleep(1);
-      sharedData[i] = v + v*sharedData[i];
-    }
-    }
-    catch(InterruptedException e) {}
-  }
-
-  // Checks to see if all values match. If not,
-  // then critical section was not executed
-  // atomically.
-  static boolean criticalSectionWasAtomic() {
-    double v = sharedData[0];
-    for(int i=0; i<SD; i++)
-      if(sharedData[i]!=v) return false;
-    return true;
-  }
-
-  // Unsafe thread executes CS N times, without
-  // holding a lock. This can cause CS to be
-  // executed non-atomically which can be detected.
-  //
-  // Safe thread executes CS N times, while
-  // holding a lock. This allows CS to always be
-  // executed atomically which can be verified.
-  static Thread thread(int n, boolean safe) {
+  static Thread consumer(String id, long wait) {
     Thread t = new Thread(() -> {
-      for(int i=0; i<CS; i++) {
-        if(safe) lock.lock();
-        criticalSection();
-        if(safe) lock.unlock();
+      try {
+      for(int i=0; i<OPS; i++) {
+        log(id+": remove()\t"+queue);
+        String x = queue.remove();
+        log(id+": sleep()\t"+x);
+        Thread.sleep(wait);
       }
-      log(n+": done");
+      }
+      catch(InterruptedException e) {}
     });
     t.start();
     return t;
   }
 
-  // Tests to see if threads execute critical
-  // section atomically.
-  static void testThreads(boolean safe) {
-    String type = safe? "safe" : "unsafe";
-    log("Starting "+TH+" "+type+" threads ...");
-    Thread[] threads = new Thread[TH];
-    for(int i=0; i<TH; i++)
-      threads[i] = thread(i, safe);
+  static Thread producer(String id, long wait) {
+    Thread t = new Thread(() -> {
+      try {
+      for(int i=0; i<OPS; i++) {
+        log(id+": add()\t"+queue);
+        queue.add(id);
+        log(id+": sleep()\t"+queue);
+        Thread.sleep(wait);
+      }
+      }
+      catch(InterruptedException e) {}
+    });
+    t.start();
+    return t;
+  }
+
+  // For test to pass, consumers A, B
+  // should not remove same value.
+  static void testThreads(long waitc, long waitp) {
+    log("For test to pass, consumers A, B");
+    log("should not remove same value.");
+    Thread A = consumer("A", waitc);
+    Thread B = consumer("B", waitc);
+    Thread C = producer("C", waitp);
+    Thread D = producer("D", waitp);
     try {
-    for(int i=0; i<TH; i++)
-      threads[i].join();
+    A.join();
+    B.join();
+    C.join();
+    D.join();
     }
     catch(InterruptedException e) {}
-    boolean atomic = criticalSectionWasAtomic();
-    log("Critical Section was atomic? "+atomic);
-    log("");
+    log("Test done.\n");
   }
 
   public static void main(String[] args) {
-    lock = new TASLock();
-    sharedData = new double[SD];
-    testThreads(false);
-    testThreads(true);
+    queue = new LockedQueue<>(CAP);
+    log("Starting fast consumers test ...");
+    testThreads(10, 20);
+    log("Starting fast producers test ...");
+    testThreads(20, 10);
   }
 
   static void log(String x) {
