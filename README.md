@@ -28,6 +28,11 @@ The functionality of this queue is similar to
 BlockingQueue and does not suffer from the lost
 wakeup problem.
 
+> **Course**: [Concurrent Data Structures], Monsoon 2020\
+> **Taught by**: Prof. Govindarajulu Regeti
+
+[Concurrent Data Structures]: https://github.com/iiithf/concurrent-data-structures
+
 ```java
 add():
 1. Acquire lock before any action.
